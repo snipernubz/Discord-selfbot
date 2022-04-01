@@ -5,14 +5,11 @@ import logging
 import urllib.request
 import mimetypes
 import os.path
-# MAIN ACCOUNTS AUTH TOKEN
-# mfa.bFXVuSexsQnwEReV7xw9SJvM5DL5e2oLQKKf7ImQbXs3OIUEU4zOS5V226VTdLnlWYOnb8AuWvoqzvO6gS5B
-# bucketofbread (alt^3)
-# OTIwMzY0NDMyNjkxOTcwMTE5.Ydhr8w.clCZPRwxLHADZlku3ztC7TLmehw
 
-token = 'OTIwMzY0NDMyNjkxOTcwMTE5.Ydhr8w.clCZPRwxLHADZlku3ztC7TLmehw'
-localpath = '/home/snipernubz/Documents/txtfiles'
+token = ' ' 
+localpath = ' ' #default path to search for files use full path ex 'C:/users/'
 prefix = '^'
+replacer = '.' # char to repalce whitespace with
 
 guildIdList = []
 guildNames = []
@@ -20,8 +17,7 @@ guildDict = {}
 channelIds = []
 channelNameList = []
 acceptedFormats = ['.txt', '.json', '.py']
-replacer = "."
-client = commands.Bot(command_prefix=prefix)
+client = commands.Bot(command_prefix=prefix, self_bot=True)
 #client.remove_command('help')
 
 #logging.basicConfig(level=logging.INFO)
@@ -134,5 +130,5 @@ async def send_error(ctx, error):
 	await ctx.send(str(error), delete_after=20)
 	print(error)
 
-client.run(token)
+client.run(token, bot=False)
 
