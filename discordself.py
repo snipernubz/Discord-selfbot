@@ -5,17 +5,23 @@ import logging
 import urllib.request
 import mimetypes
 import os.path
+import json
 
-token = ' ' 
-localpath = ' ' #default path to search for files use full path ex 'C:/users/'
-prefix = '^'
-replacer = '.' # char to repalce whitespace with
+with open('config.json', 'r') as configfile:
+	config = json.load(configfile)
+	token = config["token"]
+	prefix = config["prefix"]
+	replacer = config["replacer"]
+	localpath = config["localpath"]
+	musicpath = config["musicpath"]
+	print(config)
 
 guildIdList = []
 guildNames = []
 guildDict = {}
 channelIds = []
 channelNameList = []
+musicList = []
 acceptedFormats = ['.txt', '.json', '.py']
 client = commands.Bot(command_prefix=prefix, self_bot=True)
 #client.remove_command('help')
@@ -33,6 +39,9 @@ def guess_type_of(link, strict=True):
 async def on_ready():
 	print(f'We have logged in as {client.user}')
 
+	client.load_extension('./cogs/voice')
+	print("loaded Music extension")
+
 	for x in range(0,len(client.guilds)):
 		guildNames.append(str(client.guilds[x]))
 	for guild in client.guilds:
@@ -44,7 +53,9 @@ async def on_ready():
 	for x in range(0, len(guildIdList)):
 		print(f'GuildDict: x = {x}')
 		guildDict[str(client.guilds[x])] = guildIdList[x]
-	await ctx.send(guildDict)
+	for x in os.listdir(musicpath):
+		if x.endswith(".mp3"):
+			musicList.append(x)
 	print(guildIdList)
 	print(guildNames)
 	print(guildDict)
@@ -59,6 +70,14 @@ async def ping(ctx):
 async def get_guilds(ctx):
 	await ctx.send(guildDict)
 	
+@client.command(name='get-music')
+async def get_music(ctx, path=musicpath):
+	if path == musicpath:
+		await ctx.send(musicList)
+	else:
+		for x in os.listdir(path):
+			if x.endswith(".mp3"):
+				await ctx.send(x)
 @client.command()
 async def send(ctx, guildval, channel, filename, path=localpath):
 	print('SEND: called')
@@ -129,6 +148,7 @@ async def send_error(ctx, error):
 	await ctx.send(errormsg, delete_after=15)
 	await ctx.send(str(error), delete_after=20)
 	print(error)
+
 
 client.run(token, bot=False)
 
