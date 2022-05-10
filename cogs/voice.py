@@ -1,17 +1,26 @@
+import asyncio
 import discord
 from discord.ext import commands
 from discord.utils import get
 import youtube_dl
 import os
 from time import sleep
+import json
 #https://github.com/Rapptz/discord.py/blob/master/examples/basic_voice.py
 with open('../config.json', 'r') as configfile:
 	config = json.load(configfile)
+	token = config["token"]
+	prefix = config["prefix"]
 	musicpath = config["musicpath"]
 
+
+# Suppress noise about console usage from errors
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+
 ytdl_format_options = {
-    'format': 'bestaudio/best'
-    'outtmpl': '%(title)s.%(ext)s',
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -52,10 +61,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-class Voice(commands.Cog):
-
-	def __init__(self, bot):
-		self.client = client
+class Music(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
@@ -63,19 +71,28 @@ class Voice(commands.Cog):
 
         if ctx.voice_client is not None:
             return await ctx.voice_client.move_to(channel)
-            
-         await channel.connect()
+
+        await channel.connect()
 
     @commands.command()
-    async def play(self, ctx, *, query, path=musicpath):
+    async def play(self, ctx, *, query):
         """Plays a file from the local filesystem"""
-	print(f'{path}{query}')
-	file = open(f'{path}{query}', r)
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(file , pipe = True))
+
+        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(query))
         ctx.voice_client.play(source, after=lambda e: print(f'Player error: {e}') if e else None)
 
         await ctx.send(f'Now playing: {query}')
-    
+
+    @commands.command()
+    async def yt(self, ctx, *, url):
+        """Plays from a url (almost anything youtube_dl supports)"""
+
+        async with ctx.typing():
+            player = await YTDLSource.from_url(url, loop=self.bot.loop)
+            ctx.voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
+
+        await ctx.send(f'Now playing: {player.title}')
+
     @commands.command()
     async def stream(self, ctx, *, url):
         """Streams from a url (same as yt, but doesn't predownload)"""
@@ -86,8 +103,55 @@ class Voice(commands.Cog):
 
         await ctx.send(f'Now playing: {player.title}')
 
-def setup(client):
-	client.add_cog(Voice(client))
+    @commands.command()
+    async def volume(self, ctx, volume: int):
+        """Changes the player's volume"""
 
-bot = commands.Bot(command_prefix=prefix, self_bot=True)
-setup(bot)
+        if ctx.voice_client is None:
+            return await ctx.send("Not connected to a voice channel.")
+
+        ctx.voice_client.source.volume = volume / 100
+        await ctx.send(f"Changed volume to {volume}%")
+
+    @commands.command()
+    async def stop(self, ctx):
+        """Stops and disconnects the bot from voice"""
+
+        await ctx.voice_client.disconnect()
+
+    @play.before_invoke
+    @yt.before_invoke
+    @stream.before_invoke
+    async def ensure_voice(self, ctx):
+        if ctx.voice_client is None:
+            if ctx.author.voice:
+                await ctx.author.voice.channel.connect()
+            else:
+                await ctx.send("You are not connected to a voice channel.")
+                raise commands.CommandError("Author not connected to a voice channel.")
+        elif ctx.voice_client.is_playing():
+            ctx.voice_client.stop()
+
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(
+    command_prefix=commands.when_mentioned_or("!"),
+    description='Relatively simple music bot example',
+    intents=intents,
+)
+
+
+@bot.event
+async def on_ready():
+    print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print('------')
+
+async def main():
+    async with bot:
+        await bot.add_cog(Music(bot))
+        await bot.start(token, Bot = False)
+
+
+asyncio.run(main())
