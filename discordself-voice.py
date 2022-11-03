@@ -3,6 +3,7 @@
 import asyncio
 
 import discord
+
 import youtube_dl
 
 from discord.ext import commands
@@ -10,9 +11,15 @@ import json
 
 with open('config.json', 'r') as configfile:
 	config = json.load(configfile)
+	print("Config File Loaded")
 	token = config["token"]
 	prefix = config["prefix"]
+	print("Config Read Vars Set")
 
+
+#import logging
+
+#logging.basicConfig(level=logging.INFO)
 
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
@@ -66,13 +73,16 @@ class Music(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def join(self, ctx, *, channel: discord.VoiceChannel):
+    async def join(self, ctx, guild, channel):
         """Joins a voice channel"""
-
+        sendguild = bot.get_guild(int(guild))
+        sendchannel = sendguild.get_channel(int(channel))
+        print(sendguild)
+        print(sendchannel)
         if ctx.voice_client is not None:
-            return await ctx.voice_client.move_to(channel)
+            return await ctx.voice_client.move_to(sendchannel)
 
-        await channel.connect()
+        await sendchannel.connect()
 
     @commands.command()
     async def play(self, ctx, *, query):
@@ -119,27 +129,27 @@ class Music(commands.Cog):
 
         await ctx.voice_client.disconnect()
 
-    @play.before_invoke
-    @yt.before_invoke
-    @stream.before_invoke
-    async def ensure_voice(self, ctx):
-        if ctx.voice_client is None:
-            if ctx.author.voice:
-                await ctx.author.voice.channel.connect()
-            else:
-                await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
-        elif ctx.voice_client.is_playing():
-            ctx.voice_client.stop()
+    #@play.before_invoke
+    #@yt.before_invoke
+    #@stream.before_invoke
+    #async def ensure_voice(self, ctx):
+    #    if ctx.voice_client is None:
+    #        if ctx.author.voice:
+    #            await ctx.author.voice.channel.connect()
+    #        else:
+    #            await ctx.send("You are not connected to a voice channel.")
+    #            raise commands.CommandError("Author not connected to a voice channel.")
+    #    elif ctx.voice_client.is_playing():
+    #        ctx.voice_client.stop()
 
 
-intents = discord.Intents.default()
+#intents = discord.Intents.default()
 #intents.message_content = True
 
 bot = commands.Bot(
     command_prefix=commands.when_mentioned_or(str(prefix)),
     description='Relatively simple music bot example',
-    intents=intents,
+    #intents=intents,
 )
 
 
@@ -147,8 +157,12 @@ bot = commands.Bot(
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print('------')
-    print(str(discord.Intents.default()))
+    #print(str(discord.Intents.default()))
 
+@bot.command()
+async def ping(ctx):
+	await ctx.send(f"Pong! {round(bot.latency *1000)}ms")
+	print(ctx)
 
 bot.add_cog(Music(bot))
 bot.run(str(token))
