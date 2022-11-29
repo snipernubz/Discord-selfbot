@@ -68,13 +68,12 @@ async def on_ready():
     print(guildDict)
     print(channelIds)
     print(channelNameList)
-    print(f'We have logged in as {client.user}')
 
 
-# @client.event
-# async def on_message(message):
-#     #print(f'content = {message.content}')
-#     await client.process_commands(message)
+@client.event
+async def on_message(message):
+    print(f'content = {message.content}')
+    await client.process_commands(message)
         
 
 @client.command()
